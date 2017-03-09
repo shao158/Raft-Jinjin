@@ -1,4 +1,5 @@
 from enum import Enum
+from collections import namedtuple
 import zmq
 import sys
 import time
@@ -8,10 +9,15 @@ import random
 
 from ZMQ_Channel import ZMQ_Channel
 
+'''
+Utility in Server
+'''
 class Role(Enum):
 	Follower = 1
 	Candidate = 2
 	Leader = 3
+
+Log = namedtuple('Log', ['term', 'record'])
 
 class Server(object):
 	
@@ -34,6 +40,7 @@ class Server(object):
 		self._votedFor = -1
 		self._nextIndex = [0] * len(conf)
 		self._log = list()
+		self._log.append(Log(0, "+100"))
 		self._newPeers = {}
 		self._channel = ZMQ_Channel(self._host, self._port, self._peers)
 	
@@ -75,7 +82,7 @@ class Server(object):
 		while self._running:
 			msg = self._channel.recv(150)
 			if msg is not None:
-				logging.info('%s got a message' % str(self._role))
+				logging.info('[ %s ] Got a message: ' % str(self._role))
 				self.handleMessage(msg)
 
 			self.houseKeeping()
@@ -87,7 +94,7 @@ class Server(object):
 			return
 
 		if self._role == Role.Leader:
-			logging.info('Sending heartbeat to all peers.')
+			logging.info('[ Leader ] Sending heartbeat to all peers.')
 			self._lastUpdate = now
 			self._nextTimeout = self._heartbeat_timeout_base
 
@@ -95,11 +102,14 @@ class Server(object):
 				self._channel.send(self.aeRPC(), pport)
 
 		elif self._role == Role.Follower:
-			logging.info('No response from the leader. Start election.')
+			logging.info(('[ Follower ]'
+					' No response from the leader. Start election.'))
 			self.callElection()
 
 		elif self._role == Role.Candidate:
-			logging.info('Election timeout. Get %s Votes. Start election again.' % str(len(self._supporters)))
+			logging.info(('[ Candidate ] '
+				'Election timeout. Get %s Votes.'
+				' Start election again.' % str(len(self._supporters))))
 			self.callElection()
 
 	def callElection(self):
@@ -119,7 +129,6 @@ class Server(object):
 	def handleMessage(self, msg):
 		msgStart = msg.index(" ") + 1 
 		rpc = json.loads(msg[msgStart:])
-		logging.info('Received: ')
 		logging.info(rpc)
 
 		rpc_type = rpc['type']
@@ -142,6 +151,9 @@ class Server(object):
 		if msg['term'] < self._currentTerm:
 			return
 
+		'''
+		Candidate need to update logs
+		'''
 		if self._role is Role.Candidate:
 			logging.info('To Follower')
 			self._role = Role.Follower
@@ -149,6 +161,7 @@ class Server(object):
 		self._leader = msg['id']
 		self._currentTerm = msg['term']
 		self._lastUpdate = time.time()
+		self._nextTimeout = self._follower_timeout_base * (1 + random.random())
 		
 		if len(msg['entries']) == 0:
 			return
@@ -166,6 +179,7 @@ class Server(object):
 			#self.saveState()
 			self._channel.send(self.rvRPC_reply(True), self._peers[msg['id']])
 			self._lastUpdate = time.time()
+			self._nextTimeout = self._follower_timeout_base * (1 + random.random())
 			return
 			
 		self._channel.send(self.rvRPC_reply(False), self._peers[msg['id']])
@@ -204,8 +218,8 @@ class Server(object):
 			'type': 'rv',
 			'term': self._currentTerm,
 			'id': self._id,
-			'lastLogIndex': 0,
-			'lastLogTerm': 0
+			'lastLogIndex': len(self._log) - 1,
+			'lastLogTerm': self._log[0].term
 		}
 		return json.dumps(rpc)
 
