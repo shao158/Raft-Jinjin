@@ -17,7 +17,9 @@ def main(argv):
 	sub.connect("tcp://127.0.0.1:%s" % port)
 
 	while True:
-		c = raw_input("Do you want to buy tickets? (y/n) ")
+		print("Do you want to buy tickets? (y/n) ")
+		print("Or if you want to change the configuration, enter \"configure\"; ")
+		c = raw_input("Or if you want to look server logs, enter \"log\": ")
 		if c == "y":
 			n = raw_input(("How many tickets you are going to buy?"
 					"\nPlease enter a number:"))
@@ -32,6 +34,24 @@ def main(argv):
 				print("Please input a valid number! ")
 		elif c == "n":
 			break
+		elif c == "log":
+			sport = raw_input("Please enter the server port: ")
+			logFile = ('/Users/jshao/Documents/Python'
+                        '/distributed-Sys/proj_2'
+                        '/server_log_%s' % sport)
+			try:
+				with open(logFile) as f:
+					for line in f:
+						print(line)
+			except IOError as e:
+				print("Invalid Server Port!")
+		elif c == "configure":
+			fname = raw_input("Please enter the new configure file name: ")
+			with open(fname) as f:
+				print("Found new configure file! ")
+			msg = rpc_configure_change(fname)
+			pub.send("{port} {msg}".format(port=port, msg=msg))
+			print("Sent Request\n")
 		else:
 			print("Please input a valid option. ")
 	print("Exit")
@@ -41,6 +61,13 @@ def rpc_client_request(number, cport):
 		'type': 'cr',
 		'port': str(cport),
 		'num': number
+	}
+	return json.dumps(rpc)
+
+def rpc_configure_change(fname):
+	rpc = {
+		'type': 'configure',
+		'fname': fname
 	}
 	return json.dumps(rpc)
 

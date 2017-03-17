@@ -12,6 +12,9 @@ class ZMQ_Channel(object):
 		for pid, pport in peers.items():
 			self._sub.connect("tcp://127.0.0.1:{port}".format(port=pport))
 	
+	def addConnnection(self, port):
+		self._sub.connect("tcp://127.0.0.1:{port}".format(port=port))
+
 	def send(self, msg, port):
 		self._pub.send("{port} {msg}".format(port=port, msg=msg))
 
