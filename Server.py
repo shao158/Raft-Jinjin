@@ -79,7 +79,9 @@ class Server(object):
 		self._includedNew = False
 		self._waitingMessage = None
 		if self.loadState():
-			self._currentTerm, self._votedFor, self._peers, self._id, self._waitingMessage, self._lastApplied, self._commitIndex = self.loadState()
+			self._currentTerm, self._votedFor, self._peers,
+			self._id, self._waitingMessage, self._lastApplied, 
+			self._commitIndex = self.loadState()
 		
 		'''
 		change info from string to int
@@ -105,7 +107,8 @@ class Server(object):
 					self._clientPort = int(data[2])
 				else:
 					self._cluster[int(data[0])] = int(data[1])
-		self._channel = ZMQ_Channel(self._host, self._port, self._cluster, self._clientPort)
+		self._channel = 
+		  ZMQ_Channel(self._host, self._port, self._cluster, self._clientPort)
 
 	def loadConfigure(self, conf):
 		with open(conf, 'r') as f:
@@ -164,7 +167,8 @@ class Server(object):
 				self._log = []
 				for line in f:
 					sl = line.split()
-					self._log.append(Log(int(sl[0]), int(sl[1]), int(sl[2]), int(sl[3]), int(sl[4]), sl[5], sl[6]))
+					self._log.append(
+					  Log(int(sl[0]), int(sl[1]), int(sl[2]), int(sl[3]), int(sl[4]), sl[5], sl[6]))
 		except IOError as e:
 			if not e.errno == errno.ENOENT:
 				raise
@@ -175,7 +179,12 @@ class Server(object):
 						'/server_log_%s' % self._port)
 		with open(logFile, 'w') as w:
 			for elog in self._log:
-				w.write(str(elog.type) + " " + str(elog.term) + " " + str(elog.record) + " " + str(elog.remain) + " " + str(elog.requestedBy) + " " + elog.old + " " + elog.new + "\n")
+				w.write(str(elog.type) + " "
+					+ str(elog.term) + " "
+					+ str(elog.record) + " "
+					+ str(elog.remain) + " "
+					+ str(elog.requestedBy) + " "
+					+ elog.old + " " + elog.new + "\n")
 		
 	def loadState(self):
 		self.loadLog()
@@ -197,7 +206,9 @@ class Server(object):
 						'/distributed-Sys/proj_2'
 						'/server_state_%s' % self._port)
 		with open(stateFile, 'w') as w:
-			w.write(json.dumps([self._currentTerm, self._votedFor, self._peers, self._id, self._waitingMessage, self._lastApplied, self._commitIndex]))
+			w.write(json.dumps([self._currentTerm, self._votedFor, 
+					    self._peers, self._id, self._waitingMessage, 
+					    self._lastApplied, self._commitIndex]))
 		
 	def start(self):
 		logging.info('Server Start')
@@ -234,7 +245,9 @@ class Server(object):
 					logging.info("Enter into the new state.")
 					oldConfigureFile = self._log[self._lastApplied].old
 					newConfigureFile = self._log[self._lastApplied].new
-					self._log.append(Log(2, self._currentTerm, 0, self._log[-1].remain, 0, oldConfigureFile, newConfigureFile))
+					self._log.append(
+					  Log(2, self._currentTerm, 0, self._log[-1].remain, 0,
+					      oldConfigureFile, newConfigureFile))
 					for pid, pport in self._peers.items():
 						self._channel.send(self.aeRPC(pid), pport)
 					for pid, pport in self._peersNew.items():
@@ -257,7 +270,8 @@ class Server(object):
 			'''
 			else:
 				logging.info("Redirect reply to peers")
-				self._channel.send(self.crRPC_reply(True), self._peers[self._log[self._lastApplied].requestedBy])
+				self._channel.send(self.crRPC_reply(True),
+				  		   self._peers[self._log[self._lastApplied].requestedBy])
 			'''
 			self.saveState()
 
@@ -321,7 +335,8 @@ class Server(object):
 			logging.info(rpc)
 
 		rpc_type = rpc['type']
-		if (not rpc_type == 'ae') and (not self._included) and (not self._includedNew) and (not self._role == Role.Leader):
+		if (not rpc_type == 'ae') and (not self._included)
+		   and (not self._includedNew) and (not self._role == Role.Leader):
 			return
 
 		rpc_term = 0
@@ -329,7 +344,8 @@ class Server(object):
 			rpc_term = int(rpc['term'])
 		
 		if 'id' in rpc:
-			if (int(rpc['id']) not in self._peers) and (self._peersNew is not None and int(rpc['id']) not in self._peersNew):
+			if (int(rpc['id']) not in self._peers)
+			   and (self._peersNew is not None and int(rpc['id']) not in self._peersNew):
 				return
 
 		if rpc_term > self._currentTerm:
@@ -386,7 +402,8 @@ class Server(object):
 						self._channel.send(self.crRPC_reply(False), self._peers[tmpId])
 					if self._peersNew is not None:
 						if tmpId in self._peersNew:
-							self._channel.send(self.crRPC_reply(False), self._peersNew[tmpId])
+							self._channel.send(
+								self.crRPC_reply(False), self._peersNew[tmpId])
 				self._log = self._log[:-1]
 			if int(msg['leaderCommit']) > self._commitIndex:
 				logging.info("[ %s ] Update commit index" % self._role)
@@ -399,7 +416,9 @@ class Server(object):
 
 			logging.info("Appending entries")
 			for newLog in msg['entries']:
-				self._log.append(Log(int(newLog[0]), int(newLog[1]), int(newLog[2]), int(newLog[3]), int(newLog[4]), newLog[5], newLog[6]))
+				self._log.append(Log(int(newLog[0]), int(newLog[1]),
+						     int(newLog[2]), int(newLog[3]),
+						     int(newLog[4]), newLog[5], newLog[6]))
 				if self._log[-1].type == 1:
 					self.loadNewConfigure(self._log[-1].new)
 					logging.info("Enter into (old + new) State. ")
@@ -468,7 +487,8 @@ class Server(object):
 				self._channel.send(self.rvRPC_reply(False), self._peersNew[int(msg['id'])])
 			return
 
-		if int(msg['lastLogTerm']) < self._log[-1].term or (int(msg['lastLogTerm']) == self._log[-1].term and int(msg['lastLogIndex']) < len(self._log) - 1):
+		if int(msg['lastLogTerm']) < self._log[-1].term or
+		  (int(msg['lastLogTerm']) == self._log[-1].term and int(msg['lastLogIndex']) < len(self._log) - 1):
 			logging.info("Candiate log is less up-to-date. Don't Vote. ")
 			if int(msg['id']) in self._peers:
 				self._channel.send(self.rvRPC_reply(False), self._peers[int(msg['id'])])
@@ -562,7 +582,8 @@ class Server(object):
 				logging.info("Success. Sell %s tickets" % str(requestNum))
 				newRemain = self._log[-1].remain - requestNum
 				logging.info("Remain %s" % str(newRemain))
-				self._log.append(Log(0, self._currentTerm, requestNum, newRemain, int(msg['id']), 'none', 'none'))
+				self._log.append(Log(0, self._currentTerm, requestNum, newRemain,
+						     int(msg['id']), 'none', 'none'))
 				self.saveState()
 				self._lastUpdate = time.time()
 				self._nextTimeout = self._heartbeat_timeout_base * (1 + random.random())
